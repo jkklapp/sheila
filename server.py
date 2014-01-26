@@ -17,8 +17,12 @@ def insert():
 		data = json.loads(data)
 	except ValueError:
 		logging.warning("Error inserting data")
+	if type(data) is dict:
+		data=[data]
 	# table candidate code
 	for d in data:
+		if type(d) is not dict:
+			d=dict(d)
 		new = d.keys()
 		operation = 'Create'
 		# look for target table code
