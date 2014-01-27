@@ -1,5 +1,5 @@
 import hashlib,pickle,logging
-from config import SConf
+from config import SConf,LConf
 
 class CodeTable:
 	_instance = None
@@ -32,12 +32,27 @@ def disjoin(l1,l2): return len(set(l1) & set(l2)) == 0
 
 def subset(l1,l2): return set(l1).issubset(set(l2))
 
+def printCST(cst):
+	print "CST state"
+	for key in cst.keys():
+		print "key: "+key+" content: "+str(cst[key])
+	print "----------------------------------------"
 
+
+#this is for querying
+def getCommonSets(s,cst):
+	sets=[]
+	for key in cst.keys():
+		print str(cst[key])+" "+str(s)
+		if len(set(cst[key]) & set(s)) > 0:
+			sets.append(key)
+	return sets
+
+#this one is for the best insertion
 def getSetWithMostCommonTags(s,cst):
-	r = 0
 	rset=[]
 	rkey = ""
-	for key in cst:
+	for key in cst.keys():
 		if len(rset) < (len(set(s) & set(cst[key]))):
 			rset = list(set(s) & set(cst[key]))
 			rkey = key
@@ -52,10 +67,10 @@ def queryMatch(f, d1, d2):
 def confLogger():
 	logger = logging.getLogger("sheila")
 	logging.basicConfig(filename='sheila.log', level=logging.INFO)
-	logger.setLevel(logging.DEBUG)
+	logger.setLevel(LConf.level)
 	# create console handler and set level to debug
 	ch = logging.StreamHandler()
-	ch.setLevel(logging.DEBUG)
+	ch.setLevel(LConf.level)
 	formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s","%Y-%m-%d %H:%M:%S")
 	ch.setFormatter(formatter)
 	logger.addHandler(ch)

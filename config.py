@@ -4,3 +4,5 @@ class IConf:
 	pass
 class SConf:
 	pass
+class LConf:
+	pass

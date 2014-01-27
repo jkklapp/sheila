@@ -10,6 +10,7 @@ import logging
 
 sheila = Flask(__name__)
 
+
 @sheila.route('/_insert', methods=['POST'])
 def insert():
 	data = request.data
@@ -30,6 +31,7 @@ def insert():
 			if subset(new,cst[key]) and len(new) <= len(cst[key]):
 				operation = 'Insert'
 				target = cst[key]
+				logging.debug("\nAppending new: "+json.dumps(d)+" on existing "+makeTableName(target))
 				actual_insert(json.dumps(d), makeTableName(target), be)
 				break
 			if not disjoin(new,cst[key]):
@@ -39,14 +41,14 @@ def insert():
 				operation = 'Update'
 				logging.debug("\nAppending new: "+str(new)+" and existing "+str(tKeys))
 				target = list(set(new) | set(tKeys))
-				updateTable(tTag, makeTableName(target), cst, be)
+				updateTable(tTag, target, cst, be)
 				actual_insert(json.dumps(d), makeTableName(target), be)
 				break
 			#subset(cst[key],new) and len(cst[key]) < len(new):
 		if operation == 'Create':
 			target = new
 			createTable(makeTableName(target), target, cst, be)
-			actual_insert(d, makeTableName(target), be)
+			actual_insert(json.dumps(d), makeTableName(target), be)
 		
 		logging.info("Inserted: "+json.dumps(d)+"\nResulting tables : "+str(cst)+"\nOperation: "+operation+" with target "+str(target))
 	return ""
@@ -57,26 +59,22 @@ def query():
 	try:
 		d = json.loads(data)
 	except ValueError:
-		logging.warning("Error inserting data")
+		logging.warning("Error querying data")
 	keys = d.keys()
-	tTag,tKeys = getSetWithMostCommonTags(keys,cst)
-	if tTag is None or tKeys == []:
+	#tTag,tKeys = getSetWithMostCommonTags(keys,cst)
+	tKeys = getCommonSets(keys,cst)
+	if tKeys == []:
 		logging.debug("\nNo table for data: "+data)
 		return "{}\n"
-	logging.debug("\nLooking for "+data+" on "+tTag)
-	r=actual_select(d, tTag, be)
-	if len(r) > 1:
-		ret='{ "results": ['+json.dumps(r[0])
-		del r[0]
-		for j in r:
-			ret+=", "+json.dumps(j)
-		return ret+"]}\n"
-	else:
-		return '{ "results": '+r[0]+'}\n'
+	logging.debug("\nLooking for "+data+" on tables: "+str(tKeys))
+	ret = []
+	for tTag in tKeys:
+		partial=actual_select(d, tTag, be)
+		for p in partial:
+			ret.append(p)
+	return json.dumps(ret)+"\n"
 
 if __name__ == '__main__':
-	confLogger()
-	logging.info("Reading configuration...")
 	# Configuration
 	config = ConfigParser.RawConfigParser()
 	config.read('sheila.cfg')
@@ -89,6 +87,9 @@ if __name__ == '__main__':
 	IConf.port=config.getint('Interface', 'port')
 	IConf.debug=config.get('Interface', 'debug')
 	SConf.cstfile=config.get('Sheila','cstfile')
+	LConf.level=config.get('Log','level')
+	confLogger()
+	logging.info("Reading configuration...")
 	# App start
 	logging.info("Starting sheila...")
 	be = Backend()

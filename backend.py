@@ -32,14 +32,15 @@ def updateTable(old, new, cst, be):
 	'''Change table name '''
 	c = be.conn.cursor()
 	try:
-		c.execute("ALTER TABLE "+old+" RENAME TO "+new)
+		c.execute("ALTER TABLE "+old+" RENAME TO "+makeTableName(new))
 		be.conn.commit()
 	except Exception as e:
 		logging.critical(e)
 		be.conn.rollback()
-	cst[new]=cst[old]
+	cst[makeTableName(new)]=new
 	del cst[old]
 	pickle.dump(cst,open(SConf.cstfile,'w'))
+
 
 def actual_insert(data, table, be):
 	# Actual data insertion
