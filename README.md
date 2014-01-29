@@ -5,7 +5,7 @@ ScHema-less rEst Interface for reLAtional DB
 
 *Sheila enables REST NoSQL database operation on top of a relational database.*
 
-*Version: Alpha 0.1*
+*Version: Beta 1.0*
 
 Requirements
 --------------
