@@ -4,20 +4,19 @@ from flask import Flask
 from flask import request
 from utils import *
 from backend import *
-from config import BEConf,SConf,IConf
-import ConfigParser
+from config import SConf,BEConf,LConf,IConf
 import logging
 
 sheila = Flask(__name__)
 
-
 @sheila.route('/_insert', methods=['POST'])
 def insert():
+	logger = logging.getLogger("sheila")
 	data = request.data
 	try:
 		data = json.loads(data)
 	except ValueError:
-		logging.warning("Error inserting data")
+		logger.warning("Error inserting data")
 	if type(data) is dict:
 		data=[data]
 	# table candidate code
@@ -27,46 +26,44 @@ def insert():
 		new = d.keys()
 		operation = 'Create'
 		# look for target table code
-		for key in cst.keys():
-			if subset(new,cst[key]) and len(new) <= len(cst[key]):
+		for key in cst.tables():
+			if subset(new,cst.get(key)) and len(new) <= len(cst.get(key)):
 				operation = 'Insert'
-				target = cst[key]
-				logging.debug("\nAppending new: "+json.dumps(d)+" on existing "+makeTableName(target))
+				target = cst.get(key)
 				actual_insert(json.dumps(d), makeTableName(target), be)
 				break
-			if not disjoin(new,cst[key]):
+			if not disjoin(new,cst.get(key)):
 				tTag,tKeys = getSetWithMostCommonTags(new,cst)
 				if len(tTag) == 0 or len(tKeys) == 0:
 					continue
 				operation = 'Update'
-				logging.debug("\nAppending new: "+str(new)+" and existing "+str(tKeys))
 				target = list(set(new) | set(tKeys))
 				updateTable(tTag, target, cst, be)
 				actual_insert(json.dumps(d), makeTableName(target), be)
 				break
-			#subset(cst[key],new) and len(cst[key]) < len(new):
+			#subset(cst.get(key),new) and len(cst.get(key)) < len(new):
 		if operation == 'Create':
 			target = new
 			createTable(makeTableName(target), target, cst, be)
 			actual_insert(json.dumps(d), makeTableName(target), be)
 		
-		logging.info("Inserted: "+json.dumps(d)+"\nResulting tables : "+str(cst)+"\nOperation: "+operation+" with target "+str(target))
+		logger.debug("Inserted: "+json.dumps(d)+"\nResulting tables : "+printCST(cst)+"\nOperation: "+operation+" with target "+str(target))
 	return ""
 
 @sheila.route('/_query', methods=['POST'])
 def query():
+	logger = logging.getLogger("sheila")
 	data = request.data
 	try:
 		d = json.loads(data)
 	except ValueError:
-		logging.warning("Error querying data")
+		logger.warning("Error querying data")
 	keys = d.keys()
 	#tTag,tKeys = getSetWithMostCommonTags(keys,cst)
 	tKeys = getCommonSets(keys,cst)
 	if tKeys == []:
-		logging.debug("\nNo table for data: "+data)
-		return "{}\n"
-	logging.debug("\nLooking for "+data+" on tables: "+str(tKeys))
+		logger.debug("\nNo table for data: "+data)
+		return "[]\n"
 	ret = []
 	for tTag in tKeys:
 		partial=actual_select(d, tTag, be)
@@ -75,24 +72,18 @@ def query():
 	return json.dumps(ret)+"\n"
 
 if __name__ == '__main__':
-	# Configuration
-	config = ConfigParser.RawConfigParser()
-	config.read('sheila.cfg')
-	BEConf.port = config.getint('BE', 'port')
-	BEConf.host = config.get('BE', 'host')
-	BEConf.user = config.get('BE', 'user')
-	BEConf.passwd = config.get('BE', 'pass')
-	BEConf.db = config.get('BE', 'db')
-	IConf.host=config.get('Interface', 'host')
-	IConf.port=config.getint('Interface', 'port')
-	IConf.debug=config.get('Interface', 'debug')
-	SConf.cstfile=config.get('Sheila','cstfile')
-	LConf.level=config.get('Log','level')
-	confLogger()
-	logging.info("Reading configuration...")
+	beconf = BEConf()
+	iconf = IConf()
+	sconf = SConf()
+	lconf = LConf()
+	confLogger(lconf)
+	logger = logging.getLogger("sheila")
+	if sconf.clear:
+		clearEnvironment(sconf,beconf)
+	logger.info("Reading configuration...")
 	# App start
-	logging.info("Starting sheila...")
-	be = Backend()
-	cst = CodeTable().table
-	sheila.run(debug=IConf.debug, host=IConf.host,port=IConf.port)
+	logger.info("Starting sheila...")
+	be = Backend(beconf)
+	cst = CodeTable(sconf)
+	sheila.run(debug=iconf.debug, host=iconf.host,port=iconf.port)
 

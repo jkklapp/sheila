@@ -1,5 +1,4 @@
 import MySQLdb,pickle,json
-from config import BEConf, SConf
 import logging
 from utils import *
 
@@ -8,48 +7,55 @@ class Backend:
 
 	def __new__(cls, *args, **kwargs):
 		if not cls._instance:
-			cls._instance = super(Singleton, cls).__new__(cls, *args, **kwargs)
+			cls._instance = super(Backend, cls).__new__(cls, *args, **kwargs)
 		return cls._instance
 
-	def __init__(self):
-		logging.info("Connecting to DB...")
-		self.conn = MySQLdb.connect(host=BEConf.host, port=BEConf.port, user=BEConf.user, passwd=BEConf.passwd, db=BEConf.db)
-		logging.info("DB Online.")
+	def __init__(self,config):
+		logger = logging.getLogger("sheila")
+		logger.info("Connecting to DB...")
+		self.conn = MySQLdb.connect(host=config.host, port=config.port, user=config.user, passwd=config.passwd, db=config.db)
+		logger.info("DB Online.")
 
 def createTable(name, keys, cst, be):
+	logger = logging.getLogger("sheila")
 	c = be.conn.cursor()
 	try:
+		logger.debug("Creating new "+name)
 		c.execute("CREATE TABLE "+name+" ( id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT, data TEXT NOT NULL )")
 		be.conn.commit()
 	except Exception as e:
-		logging.critical(e)
+		logger.critical(e)
 		be.conn.rollback()
-	cst[name]=keys
-	pickle.dump(cst,open(SConf.cstfile,'w'))
+	cst.set(name,keys)
+	pickle.dump(cst,open(cst.path,'w'))
 
 
 def updateTable(old, new, cst, be):
 	'''Change table name '''
+	logger = logging.getLogger("sheila")
 	c = be.conn.cursor()
 	try:
+		logger.debug("Updating table "+old+ " to "+makeTableName(new))
 		c.execute("ALTER TABLE "+old+" RENAME TO "+makeTableName(new))
 		be.conn.commit()
 	except Exception as e:
-		logging.critical(e)
+		logger.critical(e)
 		be.conn.rollback()
-	cst[makeTableName(new)]=new
-	del cst[old]
-	pickle.dump(cst,open(SConf.cstfile,'w'))
+	cst.set(makeTableName(new),new)
+	cst.remove(old)
+	pickle.dump(cst,open(cst.path,'w'))
 
 
 def actual_insert(data, table, be):
 	# Actual data insertion
+	logger = logging.getLogger("sheila")
 	c = be.conn.cursor()
 	try:
+		logger.debug("Inserting into "+table)
 		c.execute("INSERT INTO "+table+"(data) VALUES (%s)",(str(data)))
 		be.conn.commit()
 	except Exception as e:
-		logging.critical(e)
+		logger.critical(e)
 		be.conn.rollback()
 
 
@@ -57,6 +63,8 @@ def actual_select(data, table, be):
 	f = 'equal'
  	c = be.conn.cursor()
  	# current duplicate-free policy on queries
+ 	logger = logging.getLogger("sheila")
+ 	logger.debug("MySQL select on "+table)
 	c.execute("SELECT DISTINCT data FROM "+table)
 	numrows = c.rowcount
 	r = []
@@ -74,4 +82,5 @@ def actual_select(data, table, be):
   				continue
   		if add:
   			r.append(j)
+  	logger.debug("Returned "+str(len(r))+" results from "+table)
   	return r
