@@ -29,25 +29,29 @@ def insert():
 		for key in cst.tables():
 			if subset(new,cst.get(key)) and len(new) <= len(cst.get(key)):
 				operation = 'Insert'
-				target = cst.get(key)
-				actual_insert(json.dumps(d), makeTableName(target), be)
+				#target = cst.get(key)
+				tTag,tKeys = getSetWithMostCommonTags(new,cst)
+				target=tTag
+				actual_insert(json.dumps(d), target, be)
 				break
 			if not disjoin(new,cst.get(key)):
 				tTag,tKeys = getSetWithMostCommonTags(new,cst)
 				if len(tTag) == 0 or len(tKeys) == 0:
 					continue
 				operation = 'Update'
-				target = list(set(new) | set(tKeys))
-				updateTable(tTag, target, cst, be)
-				actual_insert(json.dumps(d), makeTableName(target), be)
+				new = list(set(new) | set(tKeys))
+				#target=makeTableName(new)
+				target=tTag
+				updateTable(target, new, cst, be)
+				actual_insert(json.dumps(d), tTag, be)
 				break
 			#subset(cst.get(key),new) and len(cst.get(key)) < len(new):
 		if operation == 'Create':
-			target = new
-			createTable(makeTableName(target), target, cst, be)
-			actual_insert(json.dumps(d), makeTableName(target), be)
+			target = makeTableName(new)
+			createTable(target, new, cst, be)
+			actual_insert(json.dumps(d), target, be)
 		
-		logger.debug("Inserted: "+json.dumps(d)+"\nResulting tables : "+printCST(cst)+"\nOperation: "+operation+" with target "+str(target))
+		logger.debug("Inserted: "+json.dumps(d)+"\nResulting tables : "+printCST(cst)+"\nOperation: "+operation+" "+target)
 	return ""
 
 @sheila.route('/_query', methods=['POST'])
@@ -59,7 +63,7 @@ def query():
 	except ValueError:
 		logger.warning("Error querying data")
 	keys = d.keys()
-	#tTag,tKeys = getSetWithMostCommonTags(keys,cst)
+	#tTag,tKeys = getKeysAsSetetWithMostCommonTags(keys,cst)
 	tKeys = getCommonSets(keys,cst)
 	if tKeys == []:
 		logger.debug("\nNo table for data: "+data)

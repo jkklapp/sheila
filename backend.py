@@ -33,16 +33,16 @@ def createTable(name, keys, cst, be):
 def updateTable(old, new, cst, be):
 	'''Change table name '''
 	logger = logging.getLogger("sheila")
-	c = be.conn.cursor()
-	try:
-		logger.debug("Updating table "+old+ " to "+makeTableName(new))
-		c.execute("ALTER TABLE "+old+" RENAME TO "+makeTableName(new))
-		be.conn.commit()
-	except Exception as e:
-		logger.critical(e)
-		be.conn.rollback()
-	cst.set(makeTableName(new),new)
-	cst.remove(old)
+	#c = be.conn.cursor()
+	#try:
+	#	logger.debug("Updating table "+old+ " to "+makeTableName(new))
+	#	c.execute("ALTER TABLE "+old+" RENAME TO "+makeTableName(new))
+	#	be.conn.commit()
+	#except Exception as e:
+	#	logger.critical(e)
+	#	be.conn.rollback()
+	#cst.set(makeTableName(new),new)
+	cst.set(old,new)
 	pickle.dump(cst,open(cst.path,'w'))
 
 
@@ -65,7 +65,10 @@ def actual_select(data, table, be):
  	# current duplicate-free policy on queries
  	logger = logging.getLogger("sheila")
  	logger.debug("MySQL select on "+table)
-	c.execute("SELECT DISTINCT data FROM "+table)
+ 	try:
+		c.execute("SELECT DISTINCT data FROM "+table)
+	except:
+		logger.critical("Select on "+table)
 	numrows = c.rowcount
 	r = []
 	for x in xrange(0,numrows):

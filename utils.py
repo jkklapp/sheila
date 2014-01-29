@@ -1,7 +1,6 @@
-import hashlib,pickle,utils,time
+import hashlib,pickle,utils
 import logging
 import logging.handlers
-from shutil import copyfileobj
 import bz2,os
 import MySQLdb
 
@@ -30,7 +29,7 @@ class CodeTable:
 		except KeyError:
 			logging.critical("Accessing non existing element on CST table: "+tag)
 			raise
-	def getSet(self,tag):
+	def getKeysAsSet(self,tag):
 		try:
 			return set(self.table[tag])
 		except KeyError:
@@ -78,11 +77,11 @@ def printCST(cst):
 
 #this is for querying
 def getCommonSets(s,cst):
-	sets=[]
+	tTags=[]
 	for key in cst.tables():
-		if len(cst.getSet(key) & set(s)) > 0:
-			sets.append(key)
-	return sets
+		if set(s).issubset(cst.getKeysAsSet(key)):
+			tTags.append(key)
+	return tTags
 
 #this one is for the best insertion
 def getSetWithMostCommonTags(s,cst):
@@ -90,8 +89,8 @@ def getSetWithMostCommonTags(s,cst):
 	rset=[]
 	rkey = ""
 	for key in cst.tables():
-		if len(rset) < (len(set(s) & cst.getSet(key))):
-			rset = list(set(s) & cst.getSet(key))
+		if len(rset) < (len(set(s) & cst.getKeysAsSet(key))):
+			rset = list(set(s) & cst.getKeysAsSet(key))
 			rkey = key
 			logger.debug("For set: "+str(s)+"\nmerging with "+cst.getName(key)+"\nresulting in rkey "+str(rkey)+" and rset "+str(rset))
 	return rkey,rset
