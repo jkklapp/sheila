@@ -1,6 +1,6 @@
 SHEILA DB
 ==============
-ScHema-less rEst Interface for reLAtional DB
+ScHema-less rEst Interface for reLAtional DB. If you like it you should check [Sheila2](https://github.com/jkklapp/sheila2)
 --------------
 
 *Sheila enables REST NoSQL database operation on top of a relational database.*
